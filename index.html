@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>シンプルタイマー</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #1a1a2e;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+    }
+
+    .container {
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      letter-spacing: 0.2em;
+      color: #a0aec0;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+    }
+
+    .display {
+      font-size: 6rem;
+      font-weight: 300;
+      letter-spacing: 0.05em;
+      font-variant-numeric: tabular-nums;
+      color: #e2e8f0;
+      margin-bottom: 2rem;
+      transition: color 0.3s;
+    }
+
+    .display.running {
+      color: #68d391;
+    }
+
+    .display.finished {
+      color: #fc8181;
+      animation: pulse 0.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .input-area {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      color: #718096;
+      letter-spacing: 0.1em;
+    }
+
+    .input-group input {
+      width: 4rem;
+      padding: 0.5rem;
+      font-size: 1.5rem;
+      text-align: center;
+      background: #2d3748;
+      border: 2px solid #4a5568;
+      border-radius: 8px;
+      color: #e2e8f0;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input:focus {
+      border-color: #68d391;
+    }
+
+    .sep {
+      font-size: 2rem;
+      color: #4a5568;
+      padding-bottom: 1rem;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    button {
+      padding: 0.75rem 2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    #startBtn {
+      background: #48bb78;
+      color: #fff;
+    }
+
+    #startBtn:hover {
+      opacity: 0.85;
+    }
+
+    #pauseBtn {
+      background: #ed8936;
+      color: #fff;
+    }
+
+    #pauseBtn:hover {
+      opacity: 0.85;
+    }
+
+    #resetBtn {
+      background: #4a5568;
+      color: #e2e8f0;
+    }
+
+    #resetBtn:hover {
+      opacity: 0.85;
+    }
+
+    .message {
+      margin-top: 1.5rem;
+      font-size: 1rem;
+      color: #fc8181;
+      min-height: 1.5rem;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Timer</h1>
+
+    <div class="display" id="display">00:00:00</div>
+
+    <div class="input-area">
+      <div class="input-group">
+        <label>時間</label>
+        <input type="number" id="inputH" min="0" max="99" value="0" />
+      </div>
+      <span class="sep">:</span>
+      <div class="input-group">
+        <label>分</label>
+        <input type="number" id="inputM" min="0" max="59" value="5" />
+      </div>
+      <span class="sep">:</span>
+      <div class="input-group">
+        <label>秒</label>
+        <input type="number" id="inputS" min="0" max="59" value="0" />
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button id="startBtn">スタート</button>
+      <button id="pauseBtn" disabled>一時停止</button>
+      <button id="resetBtn">リセット</button>
+    </div>
+
+    <div class="message" id="message"></div>
+  </div>
+
+  <script>
+    let totalSeconds = 0;
+    let remaining = 0;
+    let intervalId = null;
+    let running = false;
+
+    const display = document.getElementById('display');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const message = document.getElementById('message');
+
+    function pad(n) {
+      return String(n).padStart(2, '0');
+    }
+
+    function updateDisplay(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      display.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function getInputSeconds() {
+      const h = parseInt(document.getElementById('inputH').value) || 0;
+      const m = parseInt(document.getElementById('inputM').value) || 0;
+      const s = parseInt(document.getElementById('inputS').value) || 0;
+      return h * 3600 + m * 60 + s;
+    }
+
+    function setInputsDisabled(disabled) {
+      ['inputH', 'inputM', 'inputS'].forEach(id => {
+        document.getElementById(id).disabled = disabled;
+      });
+    }
+
+    function finish() {
+      running = false;
+      clearInterval(intervalId);
+      display.classList.remove('running');
+      display.classList.add('finished');
+      startBtn.disabled = true;
+      pauseBtn.disabled = true;
+      message.textContent = '時間になりました！';
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (!running) {
+        if (!intervalId) {
+          totalSeconds = getInputSeconds();
+          if (totalSeconds <= 0) {
+            message.textContent = '時間を入力してください';
+            return;
+          }
+          remaining = totalSeconds;
+        }
+        running = true;
+        message.textContent = '';
+        display.classList.add('running');
+        display.classList.remove('finished');
+        setInputsDisabled(true);
+        startBtn.disabled = true;
+        pauseBtn.disabled = false;
+
+        intervalId = setInterval(() => {
+          remaining--;
+          updateDisplay(remaining);
+          if (remaining <= 0) finish();
+        }, 1000);
+
+        updateDisplay(remaining);
+      }
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      if (running) {
+        running = false;
+        clearInterval(intervalId);
+        intervalId = null;
+        display.classList.remove('running');
+        startBtn.disabled = false;
+        pauseBtn.disabled = true;
+        message.textContent = '一時停止中';
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      running = false;
+      clearInterval(intervalId);
+      intervalId = null;
+      remaining = 0;
+      display.classList.remove('running', 'finished');
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      setInputsDisabled(false);
+      message.textContent = '';
+      updateDisplay(0);
+    });
+  </script>
+</body>
+</html>
